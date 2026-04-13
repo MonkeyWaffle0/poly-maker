@@ -105,6 +105,8 @@ def fetch_and_process_data(check_only=False):
     client = get_clob_client()
 
     sel_df = get_sel_df(spreadsheet, "Selected Markets")
+    if 'question' not in sel_df.columns:
+        sel_df = pd.DataFrame({'question': []})
 
     if not check_only:
         wk_all = spreadsheet.worksheet("All Markets")
