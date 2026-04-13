@@ -8,14 +8,11 @@ from data_updater.find_markets import get_sel_df, get_all_markets, get_all_resul
 from gspread_dataframe import set_with_dataframe
 import traceback
 
-# Initialize global variables
-spreadsheet = get_spreadsheet()
-client = get_clob_client()
-
-wk_all = spreadsheet.worksheet("All Markets")
-wk_vol = spreadsheet.worksheet("Volatility Markets")
-
-sel_df = get_sel_df(spreadsheet, "Selected Markets")
+spreadsheet = None
+client = None
+wk_all = None
+wk_vol = None
+sel_df = None
 
 def update_sheet(data, worksheet):
     all_values = worksheet.get_all_values()
