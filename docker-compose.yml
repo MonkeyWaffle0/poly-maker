@@ -1,0 +1,13 @@
+services:
+  check-markets:
+    build: .
+    container_name: poly-check-markets
+    command: python update_markets.py --check
+    env_file:
+      - .env
+    environment:
+      - OUTPUT_DIR=/app/output
+    volumes:
+      - ./credentials.json:/app/credentials.json:ro
+      - ./output:/app/output
+    restart: "no"

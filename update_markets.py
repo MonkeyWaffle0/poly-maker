@@ -1,3 +1,5 @@
+import argparse
+import os
 import time
 import pandas as pd
 from data_updater.trading_utils import get_clob_client
@@ -74,17 +76,43 @@ def sort_df(df):
     
     return sorted_df
 
-def fetch_and_process_data():
+def print_ranked_markets(df):
+    """Pretty-print markets sorted by reward, save CSV."""
+    cols = ['question', 'gm_reward_per_100', 'rewards_daily_rate',
+            'best_bid', 'best_ask', 'volatility_sum', 'min_size',
+            'max_spread', 'tick_size', 'market_slug']
+    available = [c for c in cols if c in df.columns]
+    ranked = df.sort_values('gm_reward_per_100', ascending=False)
+
+    pd.set_option('display.max_rows', None)
+    pd.set_option('display.max_colwidth', 60)
+    pd.set_option('display.width', 200)
+
+    print("\n" + "=" * 120)
+    print(f"MARKETS RANKED BY REWARD (gm_reward_per_100) — {len(ranked)} markets")
+    print("=" * 120)
+    print(ranked[available].to_string(index=False))
+    print("=" * 120 + "\n")
+
+    out_dir = os.environ.get('OUTPUT_DIR', '.')
+    os.makedirs(out_dir, exist_ok=True)
+    out_path = os.path.join(out_dir, 'markets_ranked.csv')
+    ranked.to_csv(out_path, index=False)
+    print(f"Saved full data to {out_path}")
+
+
+def fetch_and_process_data(check_only=False):
     global spreadsheet, client, wk_all, wk_vol, sel_df
-    
+
     spreadsheet = get_spreadsheet()
     client = get_clob_client()
 
-    wk_all = spreadsheet.worksheet("All Markets")
-    wk_vol = spreadsheet.worksheet("Volatility Markets")
-    wk_full = spreadsheet.worksheet("Full Markets")
-
     sel_df = get_sel_df(spreadsheet, "Selected Markets")
+
+    if not check_only:
+        wk_all = spreadsheet.worksheet("All Markets")
+        wk_vol = spreadsheet.worksheet("Volatility Markets")
+        wk_full = spreadsheet.worksheet("Full Markets")
 
 
     all_df = get_all_markets(client)
@@ -116,6 +144,10 @@ def fetch_and_process_data():
 
     print(f'{pd.to_datetime("now")}: Fetched select market of length {len(new_df)}.')
 
+    if check_only:
+        print_ranked_markets(new_df)
+        return
+
     if len(new_df) > 50:
         update_sheet(new_df, wk_all)
         update_sheet(volatility_df, wk_vol)
@@ -124,10 +156,18 @@ def fetch_and_process_data():
         print(f'{pd.to_datetime("now")}: Not updating sheet because of length {len(new_df)}.')
 
 if __name__ == "__main__":
-    while True:
-        try:
-            fetch_and_process_data()
-            time.sleep(60 * 60)  # Sleep for an hour
-        except Exception as e:
-            traceback.print_exc()
-            print(str(e))
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--check', action='store_true',
+                        help='Run once, print ranked markets, save CSV, exit (no sheet writes).')
+    args = parser.parse_args()
+
+    if args.check:
+        fetch_and_process_data(check_only=True)
+    else:
+        while True:
+            try:
+                fetch_and_process_data()
+                time.sleep(60 * 60)  # Sleep for an hour
+            except Exception as e:
+                traceback.print_exc()
+                print(str(e))
